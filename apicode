@@ -1,0 +1,82 @@
+ public async Task<IActionResult> Upload()
+        {
+            //byte[] FileData;
+            try
+            {
+                    
+                //var file = Request.Form.Files[0];
+                var file = Request.Form.Files[0];
+                List<string> cols = new List<string>();
+                
+                var folderName = Path.Combine("Resources", "Documents");
+                var pathToSave = Path.Combine(Directory.GetCurrentDirectory(), folderName);
+                if (file.Length > 0)
+                {
+                    //var fileName = ContentDispositionHeaderValue.Parse(file.ContentDisposition).FileName.Trim('"');
+                     var fileName = file.FileName;
+                    var fullPath = Path.Combine(pathToSave, fileName);
+                    var dbPath = Path.Combine(folderName, fileName);
+                    //string path = Path.Combine(HttpContext.Server.MapPath("~/Files"));
+                    //if (!Directory.Exists(path))
+                    //{
+                    //    Directory.CreateDirectory(path);
+                    //}
+                    using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        file.CopyTo(stream);
+                    }
+                    Excelutility excelutility = new Excelutility();
+                   DataTable dt= excelutility.GetDataFromExcel(dbPath);
+                    for(int i=0;i<dt.Columns.Count;i++)
+                    {
+                        string requiredCol = "column" + i;
+                        cols.Add(requiredCol);
+                    }
+                    return Ok(new {  dt,dt.Columns.Count });
+                }
+                else
+                {
+                    return BadRequest();
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Internal server error");
+            }
+        }
+        
+        
+        --------------------------------------------------------
+        public class Excelutility
+    {
+        public DataTable GetDataFromExcel(string path1)
+        {
+            DataTable dt;
+            {
+                using (var stream = System.IO.File.Open(path1, FileMode.Open, FileAccess.Read))
+                {
+                    // Auto-detect format, supports:
+                    //  - Binary Excel files (2.0-2003 format; *.xls)
+                    //  - OpenXml Excel files (2007 format; *.xlsx)
+                    using (var reader = ExcelReaderFactory.CreateReader(stream))
+                    {
+                        do
+                        {
+                            while (reader.Read())
+                            {
+                                // reader.GetDouble(0); in case data is required
+                                // Remove the below lines once you are using for your project
+                                System.Diagnostics.Debug.WriteLine(reader.ToString());
+                            }
+                        } while (reader.NextResult());
+
+                        // 2. Use the AsDataSet extension method
+                        var result = reader.AsDataSet();
+                        dt = result.Tables[0]; // check this properly for getting relavant spreadsheet only
+                                               // The result of each spreadsheet is in result.Tables
+                    }
+                }
+                return dt;
+            }
+        }
+    }
